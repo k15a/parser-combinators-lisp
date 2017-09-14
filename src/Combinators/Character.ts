@@ -1,10 +1,13 @@
-// @flow
-
 import { InputStream, Parser, ParseResult } from './Types'
 import { mapErrorTo, mapTo, or, regex } from './Combinators'
 import { moveStream, ParserWrapper } from './Helpers'
 
-export function satisfy(predicate: (value: string) => boolean): Parser<string> {
+/**
+ * The "statisfy" parser takes a predicate function and will call it with the
+ * first character of the input. It will succeed if the predicate
+ * function returns true. Otherwise, it will fail.
+ */
+function satisfy(predicate: (value: string) => boolean): Parser<string> {
 	return new ParserWrapper(function parseSatisfy(
 		stream: InputStream,
 	): ParseResult<string> {
@@ -34,67 +37,45 @@ export function satisfy(predicate: (value: string) => boolean): Parser<string> {
 	})
 }
 
-export function char(expectedChar: string): Parser<string> {
+/**
+ * The "char" parser will succeed when the first character of the input equals
+ * the expected character. Otherwise, it will fail.
+ */
+function char(expectedChar: string): Parser<string> {
 	return mapErrorTo(
 		satisfy(char => char === expectedChar),
 		`Expected "${expectedChar}"`,
 	)
 }
 
+/**
+ * The "anyChar" parser will succeed for any character. If there is no character
+ * left it will fail.
+ */
 export function anyChar(): Parser<string> {
 	return mapErrorTo(satisfy((): boolean => true), 'Expected any character')
 }
 
-export function oneOf(chars: string): Parser<string> {
-	return mapErrorTo(
-		satisfy(char => chars.split('').includes(char)),
-		`Expected one character of "${chars}"`,
-	)
-}
-
-export function noneOf(chars: string): Parser<string> {
-	return mapErrorTo(
-		satisfy(char => !chars.split('').includes(char)),
-		`Expected no character of "${chars}"`,
-	)
-}
-
-export function space(): Parser<string> {
-	return mapErrorTo(char(' '), 'Expected space')
-}
-
-export function tab(): Parser<string> {
-	return mapErrorTo(char('\t'), 'Expected tab')
-}
-
-export function newline(): Parser<string> {
+/**
+ * The "newline" parser will succeed for a line feed character. Otherwise, it
+ * will fail.
+ */
+function newline(): Parser<string> {
 	return mapErrorTo(char('\n'), 'Expected newline')
 }
 
-export function crlf(): Parser<string> {
-	return mapErrorTo(mapTo(regex(/\x0D\n/), '\n'), 'Expected crlf')
+/**
+ * The "crlf" parser will succeed for a carriage return character followed by a
+ * line feed character. Otherwise, it will fail.
+ */
+function crlf(): Parser<string> {
+	return mapErrorTo(mapTo(regex(/\r\n/), '\n'), 'Expected crlf')
 }
 
+/**
+ * The "eol" parser will succeed if either the "newline" parser or the "crlf"
+ * parser will succeed. Otherwise, it wil fail.
+ */
 export function eol(): Parser<string> {
-	return or(newline, crlf)
-}
-
-export function lower(): Parser<string> {
-	return mapErrorTo(regex(/[a-z]/), 'Expected a lowercase character')
-}
-
-export function upper(): Parser<string> {
-	return mapErrorTo(regex(/[A-Z]/), 'Expected an uppercase character')
-}
-
-export function digit(): Parser<string> {
-	return mapErrorTo(regex(/[0-9]/), 'Expected a decimal digit')
-}
-
-export function octDigit(): Parser<string> {
-	return mapErrorTo(regex(/[0-7]/), 'Expected an octal digit')
-}
-
-export function hexDigit(): Parser<string> {
-	return mapErrorTo(regex(/[a-f0-9A-F]/), 'Expected an hexadecimal digit')
+	return mapErrorTo(or(newline, crlf), 'Expected EOL')
 }

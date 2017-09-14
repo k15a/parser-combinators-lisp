@@ -47,6 +47,22 @@ function tail(list) {
 	return list.slice(1)
 }
 
+function cond(condition, yes, no) {
+	if (condition) {
+		return yes
+	}
+
+	return no
+}
+
+function eq(left, right) {
+	return left === right
+}
+
+function not(value) {
+	return !value
+}
+
 /**
- * Program code below
+ * Program code
  */

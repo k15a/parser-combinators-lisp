@@ -1,11 +1,4 @@
-// @flow
-
-import {
-	InputStream,
-	Parser,
-	ParseResult,
-	ParseSuccess,
-} from './Types'
+import { InputStream, Parser, ParseResult } from './Types'
 
 import {
 	emptyError,
@@ -13,25 +6,6 @@ import {
 	moveStream,
 	ParserWrapper,
 } from './Helpers'
-
-export function debug<Result>(
-	parser: Parser<Result>,
-	title: string = parser.name,
-): Parser<Result> {
-	return new ParserWrapper(function parseDebug(
-		stream: InputStream,
-	): ParseResult<Result> {
-		const parseResult: ParseResult<Result> = getParseResult(parser, stream)
-
-		if (parseResult.success) {
-			console.log(`${title} succeed: ${String(parseResult.result)}`)
-		} else {
-			console.log(`${title} failed`)
-		}
-
-		return parseResult
-	})
-}
 
 // Running Parsers
 
@@ -55,30 +29,9 @@ export default function createParser<Result>(
 
 // Parsers
 
-export function fail<Result>(message: string): Parser<Result> {
-	return new ParserWrapper(function parseFail(
-		stream: InputStream,
-	): ParseResult<Result> {
-		return {
-			success: false,
-			messages: [message],
-			stream,
-		}
-	})
-}
-
-export function succeed<Result>(result: Result): Parser<Result> {
-	return new ParserWrapper(function parseSucceed(
-		stream: InputStream,
-	): ParseResult<Result> {
-		return {
-			success: true,
-			result,
-			stream,
-		}
-	})
-}
-
+/**
+ * The "string" parser will match a given string.
+ */
 export function string(expectedString: string): ParserWrapper<string> {
 	return new ParserWrapper(function parseString(
 		stream: InputStream,
@@ -99,6 +52,9 @@ export function string(expectedString: string): ParserWrapper<string> {
 	})
 }
 
+/**
+ * The "regex" parser will match a given regex.
+ */
 export function regex(pattern: RegExp): ParserWrapper<string> {
 	const source: string = pattern.source
 	const flags: string = pattern.flags
@@ -131,6 +87,9 @@ export function regex(pattern: RegExp): ParserWrapper<string> {
 	})
 }
 
+/**
+ * The end parser will match the end of the input.
+ */
 export function end(): Parser<null> {
 	return new ParserWrapper(function parseEnd(
 		stream: InputStream,
@@ -151,6 +110,9 @@ export function end(): Parser<null> {
 	})
 }
 
+/**
+ * The "whitespace" parser will match any whitespace
+ */
 export function whitespace(
 	options: {
 		atLeastOnce: boolean
@@ -166,6 +128,10 @@ export function whitespace(
 
 // Combinators
 
+/**
+ * The "map" parser takes a parser and a map function. If the given parser
+ * succeeds it will run the map function over the parse result.
+ */
 export function map<Input, Output>(
 	parser: Parser<Input>,
 	func: (input: Input) => Output,
@@ -186,6 +152,10 @@ export function map<Input, Output>(
 	})
 }
 
+/**
+ * The "mapTo" parser takes a parser and a value. If the given parser succeeds
+ * it will map the result to the value.
+ */
 export function mapTo<Input, Output>(
 	parser: Parser<Input>,
 	value: Output,
@@ -193,7 +163,11 @@ export function mapTo<Input, Output>(
 	return map(parser, (): Output => value)
 }
 
-export function mapError<Result>(
+/**
+ * The "mapError" parser takes a parser and a map function. If the given parser
+ * fails it will run the map function over the error messages.
+ */
+function mapError<Result>(
 	parser: Parser<Result>,
 	func: (errors: Array<string>) => Array<string>,
 ): Parser<Result> {
@@ -213,6 +187,10 @@ export function mapError<Result>(
 	})
 }
 
+/**
+ * The "mapErrorTo" parser takes a parser and an error message. If the given
+ * parser fails it will map the error message to the given error message.
+ */
 export function mapErrorTo<Result>(
 	parser: Parser<Result>,
 	message: string,
@@ -222,43 +200,10 @@ export function mapErrorTo<Result>(
 
 // Chaining
 
-export function andThen<Input, Output>(
-	func: (input: Input) => Parser<Output>,
-	parser: Parser<Input>,
-): Parser<Output> {
-	return new ParserWrapper(function parseAndThen(
-		stream: InputStream,
-	): ParseResult<Output> {
-		const parseResult: ParseResult<Input> = getParseResult(parser, stream)
-
-		if (parseResult.success) {
-			const secondParser: Parser<Output> = func(parseResult.result)
-
-			return getParseResult(secondParser, parseResult.stream)
-		}
-
-		return parseResult
-	})
-}
-
-export function andMap<Input, Output>(
-	parser: Parser<Input>,
-	funcParser: Parser<(input: Input) => Output>,
-): Parser<Output> {
-	return new ParserWrapper(function parseAndMap(
-		stream: InputStream,
-	): ParseResult<Output> {
-		const parseResult: ParseResult<Input> = getParseResult(parser, stream)
-
-		if (parseResult.success) {
-			const mapParser = map(funcParser, func => func(parseResult.result))
-			return getParseResult(mapParser, parseResult.stream)
-		}
-
-		return parseResult
-	})
-}
-
+/**
+ * The "ignoreLeft" parser will take two parser. It will run the parsers in a
+ * chain while ignoring the result of the first parser.
+ */
 export function ignoreLeft<Left, Right>(
 	leftParser: Parser<Left>,
 	rightParser: Parser<Right>,
@@ -276,6 +221,10 @@ export function ignoreLeft<Left, Right>(
 	})
 }
 
+/**
+ * The "ignoreRight" parser will take two parser. It will run the parsers in a
+ * chain while ignoring the result of the second parser.
+ */
 export function ignoreRight<Left, Right>(
 	leftParser: Parser<Left>,
 	rightParser: Parser<Right>,
@@ -305,97 +254,12 @@ export function ignoreRight<Left, Right>(
 	})
 }
 
-export function sequence<Result>(
-	...parsers: Array<Parser<Result>>
-): Parser<Array<Result>> {
-	return new ParserWrapper(function parseSequence(
-		stream: InputStream,
-	): ParseResult<Array<Result>> {
-		function accumulate(
-			prevParsers: Array<Parser<Result>>,
-			prevStream: InputStream,
-			prevResults: Array<Result>,
-		): ParseResult<Array<Result>> {
-			if (prevParsers.length === 0) {
-				return {
-					success: true,
-					result: prevResults,
-					stream: prevStream,
-				}
-			}
-
-			const [currentParser, ...remainingParsers] = prevParsers
-			const currentResult = getParseResult(currentParser, prevStream)
-
-			if (currentResult.success) {
-				return accumulate(remainingParsers, currentResult.stream, [
-					...prevResults,
-					currentResult.result,
-				])
-			}
-
-			return currentResult
-		}
-
-		return accumulate(parsers, stream, [])
-	})
-}
-
 // Parser Combinators
 
-export function lookAhead<Result>(parser: Parser<Result>): Parser<Result> {
-	return new ParserWrapper(function parseLookAhead(
-		stream: InputStream,
-	): ParseResult<Result> {
-		const result: ParseResult<Result> = getParseResult(parser, stream)
-
-		if (result.success) {
-			return {
-				...result,
-				stream,
-			}
-		}
-
-		return {
-			...result,
-			stream,
-		}
-	})
-}
-
-export function until(predicate: (char: string) => boolean): Parser<string> {
-	return new ParserWrapper(function parseUntil(
-		stream: InputStream,
-	): ParseResult<string> {
-		function accumulate(
-			prevStream: InputStream,
-			prevResult: string,
-		): ParseSuccess<string> {
-			if (prevStream.input === '') {
-				return {
-					success: true,
-					result: prevResult,
-					stream: prevStream,
-				}
-			}
-
-			const head: string = prevStream.input.charAt(0)
-
-			if (predicate(head)) {
-				return accumulate(moveStream(prevStream, 1), prevResult + head)
-			}
-
-			return {
-				success: true,
-				result: prevResult,
-				stream: prevStream,
-			}
-		}
-
-		return accumulate(stream, '')
-	})
-}
-
+/**
+ * The "or" parser takes two parsers. It will try the first parser and if it
+ * fails it will try the second one.
+ */
 export function or<Result>(
 	leftParser: Parser<Result>,
 	rightParser: Parser<Result>,
@@ -429,6 +293,10 @@ export function or<Result>(
 	})
 }
 
+/**
+ * The "choice" parser takes a multiple parsers. It will combine them with the
+ * "or" parser.
+ */
 export function choice<Result>(
 	...parsers: Array<Parser<Result>>
 ): Parser<Result> {
@@ -448,31 +316,10 @@ export function choice<Result>(
 	return accumulate(emptyError, parsers)
 }
 
-export function optional<Result>(
-	defaultValue: Result,
-	parser: Parser<Result>,
-): Parser<Result> {
-	return or(parser, succeed(defaultValue))
-}
-
-export function maybe<Result>(parser: Parser<Result>): Parser<Result | null> {
-	return new ParserWrapper(function parseMaybe(
-		stream: InputStream,
-	): ParseResult<Result | null> {
-		const result: ParseResult<Result> = getParseResult(parser, stream)
-
-		if (result.success) {
-			return result
-		}
-
-		return {
-			success: true,
-			result: null,
-			stream,
-		}
-	})
-}
-
+/**
+ * The "many" parser takes a parser and will run the parser until it fails. Then
+ * it will succeed with the accumulated results.
+ */
 export function many<Result>(
 	parser: Parser<Result>,
 	options: {
@@ -535,6 +382,10 @@ export function many<Result>(
 	})
 }
 
+/**
+ * The "manyTill" parser takes two parsers. It will try the first parser as long
+ * as the second parser fails. It will return the accumulated results.
+ */
 export function manyTill<Result, End>(
 	parser: Parser<Result>,
 	endParser: Parser<End>,
@@ -581,81 +432,12 @@ export function manyTill<Result, End>(
 	})
 }
 
-export function seperateBy<Result, Seperate>(
-	parser: Parser<Result>,
-	seperateParser: Parser<Seperate>,
-	options: {
-		atLeastOnce: boolean
-		optionallyEnd: boolean
-	} = {
-		atLeastOnce: false,
-		optionallyEnd: false,
-	},
-): Parser<Array<Result>> {
-	const atLeastOnce: boolean = options.atLeastOnce
-	const optionallyEnd: boolean = options.optionallyEnd
-
-	const sepBy1 = andMap(
-		parser,
-		map(
-			many(ignoreLeft(seperateParser, parser)),
-			(tail: Result[]) => (head: Result): Result[] => [head, ...tail],
-		),
-	)
-
-	if (optionallyEnd) {
-		const sepEndBy1 = ignoreRight(sepBy1, maybe(seperateParser))
-
-		if (atLeastOnce) {
-			return sepEndBy1
-		}
-
-		return or(sepEndBy1, succeed([]))
-	}
-
-	if (atLeastOnce) {
-		return sepBy1
-	}
-
-	return or(sepBy1, succeed([]))
-}
-
-export function skip<Result>(parser: Parser<Result>): Parser<null> {
-	return mapTo(parser, null)
-}
-
-export function skipMany<Result>(
-	parser: Parser<Result>,
-	options: {
-		atLeastOnce: boolean
-	} = {
-		atLeastOnce: false,
-	},
-): Parser<null> {
-	return mapTo(many(parser, options), null)
-}
-
-export function count<Result>(
-	amount: number,
-	parser: Parser<Result>,
-): Parser<Array<Result>> {
-	function accumulate(
-		prevAmount: number,
-		prevResults: Array<Result>,
-	): Parser<Array<Result>> {
-		if (prevAmount <= 0) {
-			return succeed(prevResults)
-		}
-
-		return andThen(function(currResult) {
-			return accumulate(prevAmount - 1, [...prevResults, currResult])
-		}, parser)
-	}
-
-	return accumulate(amount, [])
-}
-
-export function between<Left, Right, Result>(
+/**
+ * The "between" parser will take three parser. It will run the first parser
+ * then the third and then the second one ignoring the result of the first and
+ * second parser.
+ */
+function between<Left, Right, Result>(
 	leftParser: Parser<Left>,
 	rightParser: Parser<Right>,
 	parser: Parser<Result>,
@@ -663,14 +445,9 @@ export function between<Left, Right, Result>(
 	return ignoreLeft(leftParser, ignoreRight(parser, rightParser))
 }
 
+/**
+ * The "parens" parser take a parser and runs it in between of two parens.
+ */
 export function parens<Result>(parser: Parser<Result>): Parser<Result> {
 	return between(string('('), string(')'), parser)
-}
-
-export function braces<Result>(parser: Parser<Result>): Parser<Result> {
-	return between(string('{'), string('}'), parser)
-}
-
-export function brackets<Result>(parser: Parser<Result>): Parser<Result> {
-	return between(string('['), string(']'), parser)
 }

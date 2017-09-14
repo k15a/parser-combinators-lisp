@@ -1,18 +1,28 @@
 {
 	"name": "lisp",
 	"version": "1.0.0",
-	"main": "index.js",
+	"main": "build/compiler.js",
 	"author": "Konstantin Pschera <me@kons.ch>",
 	"license": "MIT",
 	"dependencies": {
 		"@types/chalk": "0.4.31",
+		"@types/minimist": "1.2.0",
 		"@types/node": "8.0.28",
 		"chalk": "2.1.0",
+		"minimist": "1.2.0",
 		"nodemon": "1.12.0",
+		"pkg": "4.2.4",
 		"ts-node": "3.3.0",
 		"typescript": "2.5.2"
 	},
 	"scripts": {
-		"start": "nodemon --exec \"ts-node\" src/Main.ts"
+		"start": "ts-node src/compiler.ts",
+		"dev": "nodemon --exec \"ts-node\" src/compiler.ts",
+		"compile": "tsc",
+		"pkg": "pkg build/compiler.js --out-path bin",
+		"build": "rm -rf bin && rm -rf build && npm run compile && npm run pkg"
+	},
+	"pkg": {
+		"assets": ["package.json", "src/Builtins.js"]
 	}
 }

@@ -1,0 +1,11 @@
+This is a Lisp to JavaScript compiler.
+
+Usage:
+  compiler [input-file]
+  compiler [input-file] --out [output-file]
+  compiler [input-file] --run
+  compiler [input-file] --run --out [output-file]
+
+Options:
+  --out    Specify the file where the output should be saved.
+  --run    Will run the compiled JavaScript program.

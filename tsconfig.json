@@ -3,7 +3,9 @@
 		"strict": true,
 		"lib": ["es2017"],
 		"target": "es2017",
-		"noUnusedLocals": true,
-		"noUnusedParameters": true
-	}
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"outDir": "build"
+	},
+	"files": ["src/compiler.ts"]
 }

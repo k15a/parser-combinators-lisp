@@ -19,7 +19,7 @@
 		"start": "ts-node src/compiler.ts",
 		"dev": "nodemon --exec \"ts-node\" src/compiler.ts",
 		"compile": "tsc",
-		"pkg": "pkg build/compiler.js --out-path bin",
+		"pkg": "pkg build/compiler.js --out-path bin --targets node8-macos-x64,node8-macos-x86,node8-linux-x64,node8-linux-x86,node8-win-x64,node8-win-x86",
 		"build": "rm -rf bin && rm -rf build && npm run compile && npm run pkg"
 	}
 }

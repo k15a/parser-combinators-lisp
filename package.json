@@ -21,8 +21,5 @@
 		"compile": "tsc",
 		"pkg": "pkg build/compiler.js --out-path bin",
 		"build": "rm -rf bin && rm -rf build && npm run compile && npm run pkg"
-	},
-	"pkg": {
-		"assets": ["package.json", "src/Builtins.js"]
 	}
 }

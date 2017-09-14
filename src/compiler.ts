@@ -12,7 +12,7 @@ function compiler(input: string): string {
 	return generator(ast)
 }
 
-const help = fs.readFileSync(path.resolve('src', 'Help.txt'), 'utf-8')
+const help = fs.readFileSync(path.join(__dirname, '../src/Help.txt'), 'utf-8')
 const { _: [inputFile], ...flags } = minimist(process.argv.slice(2))
 
 if (flags.help) {

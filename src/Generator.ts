@@ -10,7 +10,7 @@ import {
 	Program,
 } from './NodeTypes'
 
-const builtins = fs.readFileSync(path.resolve('src', 'Builtins.js'))
+const builtins = fs.readFileSync(path.join(__dirname, '../src/Builtins.js'))
 
 /**
  * The "filterComments" function will return true when the node is not a
